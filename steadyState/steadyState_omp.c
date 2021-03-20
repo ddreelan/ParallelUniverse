@@ -13,7 +13,9 @@
 
 int main(int argc, const char * argv[]) {
   // insert code here...
-  double startTime = omp_get_wtime();
+  double startTime =  omp_get_wtime();
+  printf("startTime: %g\n",startTime);
+
   int i,j,nThreads;
   int nrows = atoi(argv[2]);
   int ncols = atoi(argv[1]);
@@ -33,6 +35,8 @@ int main(int argc, const char * argv[]) {
 
 #pragma omp parallel
   {
+#pragma omp single
+    nThreads = omp_get_num_threads();
     // All in one loop, not sure which is better
 #pragma omp for schedule(static) private(j)
     for (i=0; i<nrows; ++i) {
@@ -62,10 +66,10 @@ int main(int argc, const char * argv[]) {
 	}
       }
     }
-    // #pragma omp barrier
-#pragma omp single 
+
+    /*    // #pragma omp barrier
+#pragma omp single
     {   
-      nThreads = omp_get_num_threads();
       // Print field
       printf("Initial State of Field:\n\n");
       for (i=(nrows-1); i>=0; --i) { // Rows printed in reverse so that output is correct
@@ -75,26 +79,29 @@ int main(int argc, const char * argv[]) {
 	printf("\n");
       }
       printf("\n\n");
-    } // omp single
-  } // END OF OMP
-
-
-
-
+      } // omp single */
+    //  } // END OF OMP
 
 
     printf("Start of finite difference loop. From thread %i\tTotal: %i\n",omp_get_thread_num(),omp_get_num_threads());
   // FINITE DIFFERENCE LOOP
   // Update field
+    //#pragma omp parallel
+      // {
   while ( (res >= tol) && (iter < iterMax)){
-    res = 0.0;
-    ++iter;
-    // Solve for wNew, using w from the previous timestep
-#pragma omp parallel
-{
-    printf("Number of threads: %i\n", omp_get_num_threads());
 
-#pragma omp for private(j)
+#pragma omp barrier
+#pragma omp single
+      {
+    res = 0.0;
+    ++iter;	
+      }
+
+    // Solve for wNew, using w from the previous timestep
+    //    printf("Number of threads: %i\n", omp_get_num_threads());
+    //#pragma omp parallel
+    //{
+#pragma omp for private(j) reduction(max:res)
     for (i=1; i<(nrows-1); ++i) {
       for (j=1; j<(ncols-1); ++j) {
         //  wNew[i][j] = ( w[i+1][j] + w[i-1][j] + w[i][j+1] + w[i][j-1] )/4.0; OLD METHOD
@@ -109,7 +116,7 @@ int main(int argc, const char * argv[]) {
 
     // CONVERGENCE CHECK
 
-    printf("tid: %i\tres: %g\n",omp_get_thread_num(),res );	
+    //    printf("tid: %i\tres: %g\n",omp_get_thread_num(),res );	
     //#pragma omp single
     //	{
 
@@ -120,13 +127,13 @@ int main(int argc, const char * argv[]) {
       }
     }
  } // End omp parallel
-    printf("iter %i\tresidual: %g\tmid val: %f\n",iter,res,w[midRow*nrows+midCol]);
+    //printf("iter %i\tresidual: %g\tmid val: %f\n",iter,res,w[midRow*nrows+midCol]);
 } // WHILE
 
     // } // single
 
   double runTime = omp_get_wtime() - startTime;
-    
+  /*    
   printf("Final state of Field, res = %g\ttol = %g\n\n",res,tol);
   for (i=(nrows-1); i>=0; --i) {
     for (j=0; j<ncols; ++j) {
@@ -134,6 +141,7 @@ int main(int argc, const char * argv[]) {
     }
     printf("\n");
   }
+  */
   printf("Program complete. Time taken: %g\tnThreads: %i\n",runTime,nThreads);
     
   return 0;
